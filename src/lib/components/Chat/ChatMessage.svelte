@@ -4,6 +4,16 @@
 	export let message: Message;
 	$: alignRight = message?.role === 'user';
 	$: username = message?.role === 'user' ? 'You' : 'ChatGPT';
+
+	function formatDate(dateString) {
+		return new Date(dateString).toLocaleString('en', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+	}
 </script>
 
 <div class="root {alignRight && `align-right`}">
@@ -12,14 +22,14 @@
 		<i class="fa fa-circle online" /> |
 	{/if}
 	<span class="time text-surface-500-400-token">
-		<small
-			>{`${new Date().toLocaleDateString('en', {
+		<small>
+			{new Date().toLocaleDateString('en', {
 				month: 'short',
 				day: 'numeric'
-			})}`}
+			})}
 			<i class="fa-solid fa-clock text-xs" />
-			{`${new Date(message.time).toLocaleTimeString()}`}</small
-		>
+			{formatDate(message.time)}
+		</small>
 	</span>
 	{#if alignRight}
 		|

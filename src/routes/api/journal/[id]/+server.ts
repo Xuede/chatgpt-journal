@@ -1,62 +1,33 @@
-import { error } from '@sveltejs/kit';
-import { getSupabase } from '@supabase/auth-helpers-sveltekit';
-import { json, redirect } from '@sveltejs/kit';
 
-// types
-import type { RequestHandler } from './$types';
+import { json } from '@sveltejs/kit';
+import { supabase } from '$lib/supabaseClient';
 
-export const GET: RequestHandler = async (event) => {
-	const { session, supabaseClient } = await getSupabase(event);
-	if (!session) {
-		throw redirect(303, '/');
-	}
-	const id = event.params.id;
+function getLocalDateISO() {
+    let date = new Date();
+    let timezoneOffset = date.getTimezoneOffset() * 60000; // Convert offset to milliseconds
+    let localDate = new Date(date.getTime() - timezoneOffset);
+    return localDate.toISOString().split('T')[0];
+}
 
-	try {
-		let query = supabaseClient
-			.from('journal')
-			.select(`id, day, content, embedding`)
-			.eq('user_id', session?.user.id);
-		if (id === 'today') {
-			query = query.eq('day', new Date().toISOString().split('T')[0]);
-		} else {
-			query = query.eq('id', id);
-		}
-		const { data, error, status } = await query.single();
+export async function get({ params, locals }) {
+    const { id } = params;
+    const { session } = locals;
 
-		if (error && status !== 406) throw error;
-		return json(data || {});
-	} catch (e) {
-		if (e instanceof Error) {
-			console.error(e);
-			throw error(500, e.message);
-		}
-	}
-	return json({ success: true });
-};
+    let query = supabase.from('journal')
+        .select(`id, day, content, embedding`)
+        .eq('user_id', session?.user.id);
 
-export const DELETE: RequestHandler = async (event) => {
-	const { session, supabaseClient } = await getSupabase(event);
-	if (!session) {
-		throw error(403, { message: 'Unauthorized' });
-	}
+    if (id === 'today') {
+        query = query.eq('day', getLocalDateISO());
+    } else {
+        query = query.eq('id', id);
+    }
 
-	const id = event.params.id;
+    const { data, error } = await query;
 
-	try {
-		const { error, status } = await supabaseClient
-			.from('journal')
-			.delete()
-			.eq('id', id)
-			.eq('user_id', session.user.id)
-			.single();
+    if (error) {
+        return json({ error: error.message }, { status: 500 });
+    }
 
-		if (error && status !== 406) throw error;
-	} catch (e) {
-		if (e instanceof Error) {
-			console.error(e);
-			throw error(500, e.message);
-		}
-	}
-	return json({ success: true });
-};
+    return json(data);
+}
